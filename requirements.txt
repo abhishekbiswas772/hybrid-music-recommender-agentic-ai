@@ -1,0 +1,7 @@
+pydantic
+langchain
+langchain-openai
+spotipy
+sentence_transformers
+chromadb
+requests
