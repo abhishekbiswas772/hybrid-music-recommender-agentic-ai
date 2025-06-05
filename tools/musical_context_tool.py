@@ -33,6 +33,18 @@ class MusicalContextTool(BaseTool):
             - Sonic characteristics desired (warm, bright, heavy, light, etc.)
             - Preferred instruments (if any mentioned or implied)
 
+            Return ONLY a JSON object with these exact fields:
+            {{
+                "activity_type": "workout|study|party|relaxation|etc",
+                "energy_preference": 0.7,
+                "familiarity_preference": 0.5,
+                "social_context": "alone|friends|party|etc", 
+                "temporal_context": "morning|evening|etc",
+                "genre_hints": ["electronic", "pop"],
+                "sonic_descriptors": ["energetic", "upbeat"],
+                "instrumental_preferences": ["drums", "synth"]
+            }}
+
             {format_instructions}
             """,
             input_variables=["user_input"],

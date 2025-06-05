@@ -6,3 +6,7 @@ sentence_transformers
 langchain_chroma
 requests
 langchain_huggingface
+pandas
+streamlit
+plotly
+scikit-learn
