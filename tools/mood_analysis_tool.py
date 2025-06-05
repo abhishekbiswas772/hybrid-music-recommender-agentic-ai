@@ -119,35 +119,3 @@ class MoodAnalysisTool(BaseTool):
             return json.dumps(fallback_mood.model_dump())
 
 
-
-# def test_mood_tool():
-#     tool = MoodAnalysisTool()
-    
-#     test_inputs = [
-#         "I've been feeling quite low and anxious lately. Nothing seems to cheer me up.",
-#         "I'm so excited for the weekend! Everything is going great!",
-#         "Feeling pretty neutral today, just going through the motions.",
-#         "I need something that feels like watching the sunrise from a mountaintop"
-#     ]
-    
-#     for i, user_input in enumerate(test_inputs, 1):
-#         print(f"\n--- Test {i} ---")
-#         print(f"Input: {user_input}")
-#         print("Analyzing...")
-        
-#         try:
-#             result = tool.invoke(user_input)
-#             print("Result:", result)
-#             parsed = json.loads(result)
-#             print("Formatted result:")
-#             for key, value in parsed.items():
-#                 print(f"  {key}: {value}")
-                
-#         except Exception as e:
-#             print(f"Error: {e}")
-
-
-# if __name__ == "__main__":
-#     print("Testing Modern LangChain Music Tools")
-#     print("=" * 70)
-#     test_mood_tool()

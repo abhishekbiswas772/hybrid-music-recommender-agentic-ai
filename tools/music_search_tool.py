@@ -1,7 +1,6 @@
-# Free Music Search Tool - Multiple Free APIs Integration
 from langchain.tools import BaseTool
 from langchain.callbacks.manager import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 import json
 import requests
 import asyncio
@@ -19,28 +18,20 @@ class FreeMusicSearchTool(BaseTool):
     _itunes_base: str = PrivateAttr(default="https://itunes.apple.com/search")
     _lastfm_base: str = PrivateAttr(default="http://ws.audioscrobbler.com/2.0/")
     _musicbrainz_base: str = PrivateAttr(default="https://musicbrainz.org/ws/2")
-    # _audiodb_base: str = PrivateAttr(default="https://www.theaudiodb.com/api/v1/json/2")
-    _genius_base: str = PrivateAttr(default="https://api.genius.com")
+    _audiodb_base: str = PrivateAttr(default="https://www.theaudiodb.com/api/v1/json/2")
     _lastfm_key: str = PrivateAttr()
-    _genius_token: str = PrivateAttr()
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
-        # Set API keys (optional - tools work without them but with limitations)
         lastfm_key = os.getenv('LASTFM_API_KEY', '')
-        genius_token = os.getenv('GENIUS_ACCESS_TOKEN', 'fzR0MQSL3GhrNKdEEKteSXyOWzn0fvHn-yXr0fzZRXJHz5lj_FlrBe5bh8xxVL6n9Ce5s9SWfu4mi8wAnhj9cA')
-        
         object.__setattr__(self, '_lastfm_key', lastfm_key)
-        object.__setattr__(self, '_genius_token', genius_token)
         
         print(f"🎵 Free Music Search Tool Initialized")
-        print(f"   🔧 Deezer API: ✅ (No key required)")
-        print(f"   🔧 iTunes API: ✅ (No key required)")
-        print(f"   🔧 MusicBrainz: ✅ (No key required)")
-        print(f"   🔧 TheAudioDB: ✅ (No key required)")
-        print(f"   🔧 Last.fm: {'✅' if lastfm_key else '⚠️  (Limited without key)'}")
-        print(f"   🔧 Genius: {'✅' if genius_token else '⚠️  (Limited without key)'}")
+        print(f"Deezer API: (No key required)")
+        print(f"iTunes API: (No key required)")
+        print(f"MusicBrainz: (No key required)")
+        print(f"TheAudioDB: (No key required)")
+        print(f"Last.fm: {'OK' if lastfm_key else 'Not OK  (Limited without key)'}")
     
     def _run(
         self, 
@@ -48,12 +39,10 @@ class FreeMusicSearchTool(BaseTool):
         run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Search music using multiple free APIs"""
-        
-        print(f"\n🔍 Starting Free Music Search")
+        print(f"\nStarting Free Music Search")
         print(f"="*50)
         
         try:
-            # Parse search parameters
             if isinstance(search_params, str):
                 try:
                     params = json.loads(search_params)
@@ -64,44 +53,35 @@ class FreeMusicSearchTool(BaseTool):
             
             search_query = params.get('query', '')
             if not search_query:
-                # Generate query from context
                 search_query = self._generate_search_query(params)
             
-            print(f"🎯 Search Query: '{search_query}'")
-            
-            # Search multiple APIs in parallel
+            print(f"Search Query: '{search_query}'")
             all_tracks = []
             
-            # 1. Deezer Search (Free, no key required)
-            print(f"\n🟢 Searching Deezer...")
+            print(f"\nSearching Deezer...")
             deezer_tracks = self._search_deezer(search_query)
             all_tracks.extend(deezer_tracks)
             
-            # 2. iTunes Search (Free, no key required)
-            print(f"\n🟢 Searching iTunes...")
+            print(f"\nSearching iTunes...")
             itunes_tracks = self._search_itunes(search_query)
             all_tracks.extend(itunes_tracks)
             
-            # 3. MusicBrainz Search (Free, no key required)
-            print(f"\n🟢 Searching MusicBrainz...")
+            print(f"\nSearching MusicBrainz...")
             mb_tracks = self._search_musicbrainz(search_query)
             all_tracks.extend(mb_tracks)
             
-            # 4. TheAudioDB Search (Free, no key required)
-            print(f"\n🟢 Searching TheAudioDB...")
+            print(f"\nSearching TheAudioDB...")
             audiodb_tracks = self._search_audiodb(search_query)
             all_tracks.extend(audiodb_tracks)
             
-            # 5. Last.fm Search (Free with key)
             if self._lastfm_key:
-                print(f"\n🟢 Searching Last.fm...")
+                print(f"\nSearching Last.fm...")
                 lastfm_tracks = self._search_lastfm(search_query)
                 all_tracks.extend(lastfm_tracks)
             
-            # Remove duplicates and rank
             unique_tracks = self._deduplicate_and_rank(all_tracks)
             
-            print(f"\n✅ Found {len(unique_tracks)} unique tracks from {len(all_tracks)} total results")
+            print(f"\nFound {len(unique_tracks)} unique tracks from {len(all_tracks)} total results")
             
             return json.dumps({
                 'tracks': unique_tracks[:30],  # Limit results
@@ -111,7 +91,7 @@ class FreeMusicSearchTool(BaseTool):
             })
             
         except Exception as e:
-            print(f"❌ Error in free music search: {e}")
+            print(f"Error in free music search: {e}")
             return json.dumps({
                 'error': str(e),
                 'tracks': [],
@@ -119,18 +99,13 @@ class FreeMusicSearchTool(BaseTool):
             })
     
     def _generate_search_query(self, params: Dict) -> str:
-        """Generate search query from context parameters"""
         query_parts = []
-        
-        # Add mood descriptors
         if params.get('mood_descriptors'):
             query_parts.extend(params['mood_descriptors'][:2])
         
-        # Add genre hints
         if params.get('genre_hints'):
             query_parts.extend(params['genre_hints'][:2])
         
-        # Add activity context
         activity = params.get('activity_type', '')
         if 'workout' in activity.lower():
             query_parts.append('energetic')
@@ -142,14 +117,13 @@ class FreeMusicSearchTool(BaseTool):
         return ' '.join(query_parts) if query_parts else 'popular music'
     
     def _search_deezer(self, query: str) -> List[Dict]:
-        """Search Deezer API (Free, no key required)"""
         try:
             url = f"{self._deezer_base}/search"
             params = {'q': query, 'limit': 25}
             
             response = requests.get(url, params=params, timeout=10)
             if response.status_code != 200:
-                print(f"   ❌ Deezer error: {response.status_code}")
+                print(f"Deezer error: {response.status_code}")
                 return []
             
             data = response.json()
@@ -161,26 +135,24 @@ class FreeMusicSearchTool(BaseTool):
                     'name': track['title'],
                     'artist': track['artist']['name'],
                     'album': track['album']['title'],
-                    'duration': track.get('duration', 0),
+                    'duration': track.get('duration', 0) * 1000,  # Convert to ms
                     'preview_url': track.get('preview'),
                     'external_url': track.get('link'),
                     'source': 'deezer',
-                    'features': {
-                        'popularity': track.get('rank', 0),
-                        'explicit': track.get('explicit_lyrics', False)
-                    }
+                    'popularity': track.get('rank', 0),
+                    'explicit': track.get('explicit_lyrics', False),
+                    'estimated_features': self._estimate_audio_features(track)
                 }
                 tracks.append(processed_track)
             
-            print(f"   ✅ Deezer: {len(tracks)} tracks")
+            print(f"Deezer: {len(tracks)} tracks")
             return tracks
             
         except Exception as e:
-            print(f"   ❌ Deezer error: {e}")
+            print(f"Deezer error: {e}")
             return []
     
     def _search_itunes(self, query: str) -> List[Dict]:
-        """Search iTunes API (Free, no key required)"""
         try:
             params = {
                 'term': query,
@@ -191,7 +163,7 @@ class FreeMusicSearchTool(BaseTool):
             
             response = requests.get(self._itunes_base, params=params, timeout=10)
             if response.status_code != 200:
-                print(f"   ❌ iTunes error: {response.status_code}")
+                print(f"iTunes error: {response.status_code}")
                 return []
             
             data = response.json()
@@ -208,23 +180,21 @@ class FreeMusicSearchTool(BaseTool):
                         'preview_url': track.get('previewUrl'),
                         'external_url': track.get('trackViewUrl'),
                         'source': 'itunes',
-                        'features': {
-                            'genre': track.get('primaryGenreName'),
-                            'price': track.get('trackPrice'),
-                            'explicit': track.get('trackExplicitness') == 'explicit'
-                        }
+                        'popularity': 0,  # iTunes doesn't provide popularity
+                        'explicit': track.get('trackExplicitness') == 'explicit',
+                        'genre': track.get('primaryGenreName'),
+                        'estimated_features': self._estimate_audio_features(track, source='itunes')
                     }
                     tracks.append(processed_track)
             
-            print(f"   ✅ iTunes: {len(tracks)} tracks")
+            print(f"iTunes: {len(tracks)} tracks")
             return tracks
             
         except Exception as e:
-            print(f"   ❌ iTunes error: {e}")
+            print(f"iTunes error: {e}")
             return []
     
     def _search_musicbrainz(self, query: str) -> List[Dict]:
-        """Search MusicBrainz API (Free, no key required)"""
         try:
             url = f"{self._musicbrainz_base}/recording"
             params = {
@@ -237,7 +207,7 @@ class FreeMusicSearchTool(BaseTool):
             response = requests.get(url, params=params, headers=headers, timeout=10)
             
             if response.status_code != 200:
-                print(f"   ❌ MusicBrainz error: {response.status_code}")
+                print(f"MusicBrainz error: {response.status_code}")
                 return []
             
             data = response.json()
@@ -257,32 +227,28 @@ class FreeMusicSearchTool(BaseTool):
                     'album': release_info.get('title', ''),
                     'duration': recording.get('length', 0),
                     'source': 'musicbrainz',
-                    'features': {
-                        'mbid': recording['id'],
-                        'score': recording.get('score', 0)
-                    }
+                    'popularity': recording.get('score', 50),  # Use MusicBrainz score
+                    'mbid': recording['id'],
+                    'estimated_features': self._estimate_audio_features(recording, source='musicbrainz')
                 }
                 tracks.append(processed_track)
             
-            print(f"   ✅ MusicBrainz: {len(tracks)} tracks")
-            # Add delay to respect rate limits
+            print(f"MusicBrainz: {len(tracks)} tracks")
             time.sleep(1)
             return tracks
             
         except Exception as e:
-            print(f"   ❌ MusicBrainz error: {e}")
+            print(f"MusicBrainz error: {e}")
             return []
     
     def _search_audiodb(self, query: str) -> List[Dict]:
-        """Search TheAudioDB API (Free, no key required)"""
         try:
-            # TheAudioDB search by track name
             url = f"{self._audiodb_base}/searchtrack.php"
             params = {'s': query}
             
             response = requests.get(url, params=params, timeout=10)
             if response.status_code != 200:
-                print(f"   ❌ AudioDB error: {response.status_code}")
+                print(f"AudioDB error: {response.status_code}")
                 return []
             
             data = response.json()
@@ -296,23 +262,22 @@ class FreeMusicSearchTool(BaseTool):
                         'artist': track['strArtist'],
                         'album': track.get('strAlbum', ''),
                         'source': 'audiodb',
-                        'features': {
-                            'genre': track.get('strGenre'),
-                            'year': track.get('intYear'),
-                            'description': track.get('strDescriptionEN', '')[:100]
-                        }
+                        'popularity': 0,
+                        'genre': track.get('strGenre'),
+                        'year': track.get('intYear'),
+                        'description': track.get('strDescriptionEN', '')[:100],
+                        'estimated_features': self._estimate_audio_features(track, source='audiodb')
                     }
                     tracks.append(processed_track)
             
-            print(f"   ✅ AudioDB: {len(tracks)} tracks")
+            print(f"AudioDB: {len(tracks)} tracks")
             return tracks
             
         except Exception as e:
-            print(f"   ❌ AudioDB error: {e}")
+            print(f"AudioDB error: {e}")
             return []
     
     def _search_lastfm(self, query: str) -> List[Dict]:
-        """Search Last.fm API (Free with key)"""
         if not self._lastfm_key:
             return []
         
@@ -328,7 +293,7 @@ class FreeMusicSearchTool(BaseTool):
             
             response = requests.get(url, params=params, timeout=10)
             if response.status_code != 200:
-                print(f"   ❌ Last.fm error: {response.status_code}")
+                print(f"Last.fm error: {response.status_code}")
                 return []
             
             data = response.json()
@@ -342,44 +307,70 @@ class FreeMusicSearchTool(BaseTool):
                         'artist': track['artist'],
                         'source': 'lastfm',
                         'external_url': track.get('url'),
-                        'features': {
-                            'listeners': track.get('listeners'),
-                            'mbid': track.get('mbid')
-                        }
+                        'popularity': int(track.get('listeners', 0)) // 1000,  # Convert to 0-100 scale
+                        'listeners': track.get('listeners'),
+                        'mbid': track.get('mbid'),
+                        'estimated_features': self._estimate_audio_features(track, source='lastfm')
                     }
                     tracks.append(processed_track)
             
-            print(f"   ✅ Last.fm: {len(tracks)} tracks")
+            print(f"Last.fm: {len(tracks)} tracks")
             return tracks
             
         except Exception as e:
-            print(f"   ❌ Last.fm error: {e}")
+            print(f"Last.fm error: {e}")
             return []
     
+    def _estimate_audio_features(self, track_data: Dict, source: str = 'unknown') -> Dict:
+        features = {
+            'energy': 0.5,
+            'valence': 0.5,
+            'danceability': 0.5,
+            'acousticness': 0.3,
+            'instrumentalness': 0.1,
+            'tempo': 120,
+            'loudness': -8.0,
+            'estimated': True
+        }
+        
+        genre = track_data.get('genre', '').lower() if isinstance(track_data.get('genre'), str) else ''
+        
+        if any(word in genre for word in ['rock', 'metal', 'punk']):
+            features.update({'energy': 0.8, 'loudness': -5.0, 'tempo': 140})
+        elif any(word in genre for word in ['electronic', 'dance', 'edm']):
+            features.update({'energy': 0.9, 'danceability': 0.9, 'tempo': 128})
+        elif any(word in genre for word in ['classical', 'instrumental']):
+            features.update({'acousticness': 0.9, 'instrumentalness': 0.8, 'energy': 0.3})
+        elif any(word in genre for word in ['jazz', 'blues']):
+            features.update({'acousticness': 0.7, 'energy': 0.4, 'valence': 0.4})
+        elif any(word in genre for word in ['pop', 'mainstream']):
+            features.update({'valence': 0.7, 'danceability': 0.7, 'energy': 0.6})
+        elif any(word in genre for word in ['ambient', 'chill']):
+            features.update({'energy': 0.2, 'valence': 0.6, 'acousticness': 0.6})
+        
+        popularity = track_data.get('popularity', 50)
+        if popularity > 70:
+            features['valence'] = min(0.9, features['valence'] + 0.2)
+            features['danceability'] = min(0.9, features['danceability'] + 0.1)
+        
+        return features
+    
     def _deduplicate_and_rank(self, tracks: List[Dict]) -> List[Dict]:
-        """Remove duplicates and rank tracks by quality/relevance"""
         seen = set()
         unique_tracks = []
         
         for track in tracks:
-            # Create a key for deduplication
             key = (track['name'].lower().strip(), track['artist'].lower().strip())
             
             if key not in seen:
                 seen.add(key)
-                
-                # Calculate relevance score
+
                 score = 0
-                
-                # Prefer tracks with preview URLs
                 if track.get('preview_url'):
                     score += 10
-                
-                # Prefer tracks with external URLs
+            
                 if track.get('external_url'):
                     score += 5
-                
-                # Source preference (Deezer and iTunes have better metadata)
                 source_scores = {
                     'deezer': 10,
                     'itunes': 9,
@@ -388,18 +379,12 @@ class FreeMusicSearchTool(BaseTool):
                     'musicbrainz': 5
                 }
                 score += source_scores.get(track['source'], 0)
-                
-                # Add popularity/ranking if available
-                features = track.get('features', {})
-                if 'popularity' in features:
-                    score += features['popularity'] / 100
-                if 'rank' in features:
-                    score += features['rank'] / 1000
+                popularity = track.get('popularity', 0)
+                score += popularity / 10
                 
                 track['relevance_score'] = score
                 unique_tracks.append(track)
-        
-        # Sort by relevance score
+    
         unique_tracks.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
         
         return unique_tracks
@@ -412,94 +397,3 @@ class FreeMusicSearchTool(BaseTool):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._run, search_params, run_manager)
 
-def test_free_music_search():
-    """Test the free music search tool"""
-    
-    print(f"🧪 Testing Free Music Search Tool")
-    print(f"="*60)
-    
-    # Test queries
-    test_cases = [
-        {
-            "query": "chill electronic",
-            "description": "Simple genre search"
-        },
-        {
-            "mood_descriptors": ["energetic", "upbeat"],
-            "genre_hints": ["rock", "electronic"],
-            "activity_type": "workout",
-            "description": "Complex context search"
-        },
-        {
-            "query": "Beatles Yesterday",
-            "description": "Specific song search"
-        }
-    ]
-    
-    try:
-        tool = FreeMusicSearchTool()
-        
-        for i, test_case in enumerate(test_cases, 1):
-            print(f"\n🧪 Test {i}: {test_case['description']}")
-            print(f"{'='*40}")
-            
-            test_input = json.dumps(test_case)
-            result = tool.invoke(test_input)
-            data = json.loads(result)
-            
-            print(f"🎯 Search Query: {data.get('search_query', 'N/A')}")
-            print(f"📊 Total Found: {data.get('total_found', 0)}")
-            print(f"🔧 Sources Used: {', '.join(data.get('sources_used', []))}")
-            
-            tracks = data.get('tracks', [])
-            if tracks:
-                print(f"\n🎵 Top Results:")
-                for j, track in enumerate(tracks[:3], 1):
-                    preview = " 🎧" if track.get('preview_url') else ""
-                    print(f"   {j}. {track['name']} by {track['artist']}{preview}")
-                    print(f"      Source: {track['source']} | Score: {track.get('relevance_score', 0):.1f}")
-                    if track.get('album'):
-                        print(f"      Album: {track['album']}")
-            else:
-                print(f"❌ No tracks found")
-    
-    except Exception as e:
-        print(f"❌ Test failed: {e}")
-
-# Setup instructions
-def show_setup_instructions():
-    """Show setup instructions for free APIs"""
-    print(f"\n🔧 Setup Instructions for Free Music APIs:")
-    print(f"="*60)
-    print(f"")
-    print(f"✅ NO SETUP REQUIRED:")
-    print(f"   • Deezer API - Works immediately")
-    print(f"   • iTunes API - Works immediately") 
-    print(f"   • MusicBrainz API - Works immediately")
-    print(f"   • TheAudioDB API - Works immediately")
-    print(f"")
-    print(f"🔑 OPTIONAL API KEYS (for better results):")
-    print(f"   • Last.fm API Key:")
-    print(f"     1. Go to: https://www.last.fm/api/account/create")
-    print(f"     2. Create account and get API key")
-    print(f"     3. Add to .env: LASTFM_API_KEY=your_key")
-    print(f"")
-    print(f"   • Genius API Token:")
-    print(f"     1. Go to: https://genius.com/api-clients")
-    print(f"     2. Create app and get access token")
-    print(f"     3. Add to .env: GENIUS_ACCESS_TOKEN=your_token")
-    print(f"")
-    print(f"💡 The tool works great even without any API keys!")
-
-if __name__ == "__main__":
-    print(f"🎵 Free Music Search Tool - Spotify Alternative")
-    print(f"="*70)
-    
-    # Show setup instructions
-    show_setup_instructions()
-    
-    # Run tests
-    test_free_music_search()
-    
-    print(f"\n✅ Free music search testing completed!")
-    print(f"🚀 This tool replaces Spotify API with multiple free alternatives!")

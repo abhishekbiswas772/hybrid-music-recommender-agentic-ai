@@ -3,5 +3,6 @@ langchain
 langchain-openai
 spotipy
 sentence_transformers
-chromadb
+langchain_chroma
 requests
+langchain_huggingface
