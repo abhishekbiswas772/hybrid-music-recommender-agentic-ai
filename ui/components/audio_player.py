@@ -1,11 +1,6 @@
-# ui/components/audio_player.py - Advanced Audio Player Component
 import streamlit as st
-from typing import Optional
-import time
 
 class AudioPlayer:
-    """Advanced audio player component with controls"""
-    
     def __init__(self):
         self.player_id = 0
     
@@ -24,11 +19,9 @@ class AudioPlayer:
             st.write("🔇 No audio preview available")
             return False
         
-        # Create columns for player layout
         col1, col2, col3 = st.columns([1, 3, 1])
         
         with col1:
-            # Album art placeholder or track info
             st.markdown(f"""
             <div style="
                 background: linear-gradient(45deg, #667eea, #764ba2);
@@ -48,7 +41,6 @@ class AudioPlayer:
             """, unsafe_allow_html=True)
         
         with col2:
-            # Track info and audio player
             st.markdown(f"""
             <div style="padding: 8px 0;">
                 <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
@@ -59,12 +51,9 @@ class AudioPlayer:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Streamlit's built-in audio player
             st.audio(preview_url, format='audio/mp3')
         
         with col3:
-            # Additional controls
             if st.button("🔗", key=f"link_{key}", help="Open external link"):
                 external_url = track.get('external_url')
                 if external_url:
@@ -75,39 +64,31 @@ class AudioPlayer:
         return True
     
     def render_mini_player(self, track: dict, key: str = None) -> bool:
-        """Render compact mini player"""
-        
         if not key:
             key = f"mini_{self.player_id}"
             self.player_id += 1
         
         preview_url = track.get('preview_url')
-        
         if not preview_url:
             st.caption("🔇 No preview")
             return False
         
-        # Compact audio player
         with st.container():
             st.audio(preview_url, format='audio/mp3')
         
         return True
     
     def render_playlist_player(self, tracks: list, key: str = None) -> dict:
-        """Render playlist-style player with multiple tracks"""
-        
         if not key:
             key = f"playlist_{self.player_id}"
             self.player_id += 1
         
-        # Filter tracks with preview URLs
         playable_tracks = [t for t in tracks if t.get('preview_url')]
         
         if not playable_tracks:
             st.info("No audio previews available for these tracks")
             return {}
         
-        # Track selector
         track_options = [
             f"{t.get('name', 'Unknown')} - {t.get('artist', 'Unknown')}" 
             for t in playable_tracks
@@ -121,11 +102,7 @@ class AudioPlayer:
         )
         
         selected_track = playable_tracks[selected_idx]
-        
-        # Render player for selected track
         self.render_player(selected_track, f"selected_{key}")
-        
-        # Playlist controls
         col1, col2, col3 = st.columns(3)
         
         with col1:

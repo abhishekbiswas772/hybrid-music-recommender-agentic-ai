@@ -1,32 +1,20 @@
-
-
-
-# ui/pages/home.py - Main Recommendations Page
 import streamlit as st
 import asyncio
 from typing import Dict, List
 from datetime import datetime
-import json
 
-from core.ui.components.audio_player import AudioPlayer
-from core.ui.components.track_card import TrackCard
 from core.hybrid_system import RecommendationRequest
+from ui.components.audio_player import AudioPlayer
+from ui.components.track_card import TrackCard
 
 class HomePage:
-    """Main recommendations page with LLM+RL integration"""
-    
     def __init__(self):
         self.audio_player = AudioPlayer()
         self.track_card = TrackCard(self.audio_player)
     
     def show_home_page(self, user: Dict, hybrid_system, db_manager):
-        """Main home page with recommendations"""
-        
-        # Page header
         st.markdown(f"### 🎵 Welcome back, {user['full_name'] or user['username']}!")
         st.markdown("What music matches your mood today?")
-        
-        # Main layout
         col1, col2 = st.columns([2, 1])
         
         with col1:

@@ -1,10 +1,6 @@
-
-# ui/utils/styling.py - UI Styling Utilities
 import streamlit as st
 
 def apply_custom_css():
-    """Apply custom CSS styling"""
-    
     st.markdown("""
     <style>
         /* Main app styling */

@@ -1,23 +1,17 @@
-# services/user_service.py - User Management Service
 import hashlib
 import sqlite3
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 from datetime import datetime
 import json
 
 class UserService:
-    """User management and authentication service"""
     
     def __init__(self, db_manager):
         self.db_manager = db_manager
     
     def create_user(self, username: str, email: str, password: str, full_name: str = None) -> bool:
-        """Create new user account"""
-        
         try:
-            # Hash password
             password_hash = self._hash_password(password)
-            
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
                 
@@ -29,8 +23,8 @@ class UserService:
                     email,
                     full_name,
                     password_hash,
-                    json.dumps({}),  # Default preferences
-                    json.dumps({     # Default settings
+                    json.dumps({}), 
+                    json.dumps({   
                         'theme': 'dark',
                         'email_notifications': True,
                         'ai_learning_enabled': True
@@ -47,14 +41,11 @@ class UserService:
             return False
     
     def authenticate(self, username: str, password: str) -> bool:
-        """Authenticate user credentials"""
-        
         try:
             password_hash = self._hash_password(password)
             
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
-                
                 cursor.execute('''
                     SELECT id FROM users 
                     WHERE username = ? AND password_hash = ?
@@ -110,8 +101,6 @@ class UserService:
             return None
     
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
-        """Get user data by ID"""
-        
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
@@ -142,8 +131,6 @@ class UserService:
             return None
     
     def update_user_preferences(self, user_id: int, preferences: Dict) -> bool:
-        """Update user preferences"""
-        
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
@@ -160,8 +147,6 @@ class UserService:
             return False
     
     def update_user_settings(self, user_id: int, settings: Dict) -> bool:
-        """Update user settings"""
-        
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
@@ -178,13 +163,9 @@ class UserService:
             return False
     
     def get_user_stats(self, user_id: int) -> Dict:
-        """Get user statistics"""
-        
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Basic stats
                 cursor.execute('SELECT COUNT(*) FROM interactions WHERE user_id = ?', (user_id,))
                 total_interactions = cursor.fetchone()[0]
                 
@@ -194,11 +175,7 @@ class UserService:
                 cursor.execute('SELECT AVG(rating) FROM feedback WHERE user_id = ?', (user_id,))
                 avg_rating_result = cursor.fetchone()
                 average_rating = avg_rating_result[0] if avg_rating_result[0] else 0
-                
-                # Personalization level
                 personalization_level = min(1.0, total_feedback / 20.0)
-                
-                # Recent high-rated tracks
                 cursor.execute('''
                     SELECT track_name, artist, rating, timestamp
                     FROM feedback 
@@ -236,13 +213,9 @@ class UserService:
             }
     
     def delete_user(self, user_id: int) -> bool:
-        """Delete user and all associated data"""
-        
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Delete in correct order due to foreign keys
                 cursor.execute('DELETE FROM feedback WHERE user_id = ?', (user_id,))
                 cursor.execute('DELETE FROM interactions WHERE user_id = ?', (user_id,))
                 cursor.execute('DELETE FROM user_model_performance WHERE user_id = ?', (user_id,))
@@ -256,17 +229,11 @@ class UserService:
             return False
     
     def _hash_password(self, password: str) -> str:
-        """Hash password with salt"""
-        
-        # Simple password hashing (in production, use bcrypt or similar)
         salt = "music_curator_salt"
         return hashlib.sha256((password + salt).encode()).hexdigest()
     
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
-        """Change user password"""
-        
         try:
-            # Verify old password first
             user = self.get_user_by_id(user_id)
             if not user:
                 return False
@@ -275,15 +242,13 @@ class UserService:
             
             with sqlite3.connect(self.db_manager.db_path) as conn:
                 cursor = conn.cursor()
-                
                 cursor.execute('''
                     SELECT id FROM users WHERE id = ? AND password_hash = ?
                 ''', (user_id, old_hash))
                 
                 if not cursor.fetchone():
-                    return False  # Old password incorrect
+                    return False 
                 
-                # Update with new password
                 new_hash = self._hash_password(new_password)
                 cursor.execute('''
                     UPDATE users SET password_hash = ? WHERE id = ?

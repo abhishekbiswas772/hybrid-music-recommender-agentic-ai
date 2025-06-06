@@ -1,23 +1,15 @@
-
-# ui/components/track_card.py - Enhanced Track Card Component
 import time
 import streamlit as st
 from typing import Dict, Optional, Callable
-import json
+
 
 class TrackCard:
-    """Enhanced track card component with rating and feedback"""
-    
     def __init__(self, audio_player):
         self.audio_player = audio_player
     
     def render_card(self, track: Dict, user_id: int, interaction_id: Optional[int] = None, 
                    on_feedback: Optional[Callable] = None, show_rl_info: bool = True) -> Dict:
-        """Render complete track card with all features"""
-        
-        # Main card container
         with st.container():
-            # Card styling
             st.markdown(f"""
             <div style="
                 background: rgba(255, 255, 255, 0.1);
@@ -29,8 +21,6 @@ class TrackCard:
                 box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             ">
             """, unsafe_allow_html=True)
-            
-            # Track header
             col1, col2 = st.columns([3, 1])
             
             with col1:
@@ -40,34 +30,26 @@ class TrackCard:
                     st.markdown(f"**Album:** {track.get('album')}")
             
             with col2:
-                # Source and scores
                 source = track.get('source', 'unknown').title()
                 st.markdown(f"**Source:** {source}")
                 
                 base_score = track.get('ranking_score', 0)
                 st.markdown(f"**Score:** {base_score:.2f}")
             
-            # Detailed information tabs
             tab1, tab2, tab3 = st.tabs(["🎵 Audio", "📊 Details", "🤖 AI Insights"])
             
             with tab1:
-                # Audio player
                 self.audio_player.render_player(track, f"card_{track.get('id', 'unknown')}")
-                
-                # Audio features visualization
                 if track.get('estimated_features'):
                     self._render_audio_features(track['estimated_features'])
             
             with tab2:
-                # Track details
                 self._render_track_details(track)
             
             with tab3:
-                # AI insights
                 if show_rl_info:
                     self._render_ai_insights(track)
             
-            # Rating and feedback section
             feedback_result = {}
             if interaction_id and user_id:
                 feedback_result = self._render_feedback_section(
@@ -79,11 +61,7 @@ class TrackCard:
             return feedback_result
     
     def _render_audio_features(self, features: Dict):
-        """Render audio features visualization"""
-        
         st.markdown("#### 🎚️ Audio Characteristics")
-        
-        # Create feature bars
         feature_names = {
             'energy': 'Energy',
             'valence': 'Positivity',
@@ -95,8 +73,6 @@ class TrackCard:
         for feature, display_name in feature_names.items():
             value = features.get(feature, 0.5)
             percentage = int(value * 100)
-            
-            # Create a visual bar
             bar_color = self._get_feature_color(feature, value)
             st.markdown(f"""
             <div style="margin: 8px 0;">
@@ -121,7 +97,6 @@ class TrackCard:
             </div>
             """, unsafe_allow_html=True)
         
-        # Tempo and loudness
         col1, col2 = st.columns(2)
         with col1:
             tempo = features.get('tempo', 120)
@@ -131,9 +106,6 @@ class TrackCard:
             st.metric("Loudness", f"{loudness:.1f} dB")
     
     def _render_track_details(self, track: Dict):
-        """Render detailed track information"""
-        
-        # Basic info
         col1, col2 = st.columns(2)
         
         with col1:
@@ -153,7 +125,6 @@ class TrackCard:
                 explicit_text = "Yes" if track['explicit'] else "No"
                 st.metric("Explicit", explicit_text)
         
-        # Tags and genres
         if track.get('lastfm_tags'):
             st.markdown("#### 🏷️ Tags")
             tags_html = "".join([
@@ -162,11 +133,9 @@ class TrackCard:
             ])
             st.markdown(tags_html, unsafe_allow_html=True)
         
-        # External links
         if track.get('external_url'):
             st.markdown(f"🔗 [Listen on {track.get('source', 'platform').title()}]({track['external_url']})")
         
-        # Similar tracks
         if track.get('similar_tracks'):
             with st.expander("🔄 Similar Tracks"):
                 for similar in track['similar_tracks'][:3]:
@@ -174,9 +143,6 @@ class TrackCard:
                     st.write(f"• **{similar.get('name')}** by {similar.get('artist')} ({match_score:.0f}% match)")
     
     def _render_ai_insights(self, track: Dict):
-        """Render AI-specific insights"""
-        
-        # RL predictions
         if track.get('rl_predicted_rating'):
             predicted = track['rl_predicted_rating']
             confidence = track.get('rl_confidence', 0) * 100
@@ -189,7 +155,6 @@ class TrackCard:
             with col2:
                 st.metric("Confidence", f"{confidence:.0f}%")
         
-        # RL bonus/penalty
         if track.get('rl_bonus') is not None:
             bonus = track['rl_bonus']
             bonus_type = "Boost" if bonus > 0 else "Penalty" if bonus < 0 else "Neutral"
@@ -208,7 +173,6 @@ class TrackCard:
             </div>
             """, unsafe_allow_html=True)
         
-        # Feature contributions
         if track.get('feature_contributions'):
             st.markdown("#### 📊 Why This Track?")
             contributions = track['feature_contributions']
@@ -228,14 +192,10 @@ class TrackCard:
     
     def _render_feedback_section(self, track: Dict, user_id: int, interaction_id: int, 
                                 on_feedback: Optional[Callable]) -> Dict:
-        """Render rating and feedback section"""
-        
         track_id = track.get('id', f"unknown_{hash(track.get('name', '') + track.get('artist', ''))}")
         
         st.markdown("---")
         st.markdown("#### ⭐ Rate This Track")
-        
-        # Rating slider
         col1, col2 = st.columns([2, 1])
         
         with col1:
@@ -248,7 +208,6 @@ class TrackCard:
                 help="1 = Hate it, 5 = Love it"
             )
             
-            # Rating description
             rating_descriptions = {
                 1: "😞 Not for me",
                 2: "😐 It's okay",
@@ -259,7 +218,6 @@ class TrackCard:
             st.caption(rating_descriptions.get(rating, ""))
         
         with col2:
-            # Visual rating display
             stars = "⭐" * rating + "☆" * (5 - rating)
             st.markdown(f"<div style='font-size: 2rem; text-align: center;'>{stars}</div>", 
                        unsafe_allow_html=True)
@@ -291,10 +249,7 @@ class TrackCard:
                 if st.checkbox(category, key=key):
                     selected_categories.append(category)
         
-        # Submit button
         if st.button(f"Submit Rating", key=f"submit_{track_id}_{interaction_id}", type="primary"):
-            
-            # Prepare feedback data
             feedback_data = {
                 'user_id': user_id,
                 'interaction_id': interaction_id,
@@ -314,18 +269,15 @@ class TrackCard:
                 'relevance_score': track.get('relevance_score'),
                 'timestamp': time.time()
             }
-            
-            # Call feedback handler
+    
             if on_feedback:
                 result = on_feedback(feedback_data)
                 
                 if result.get('success'):
                     st.success("🎉 Thank you for your feedback!")
-                    
                     if result.get('model_updated'):
                         st.info("🧠 Your AI model has been updated with this feedback!")
                     
-                    # Show learning progress
                     if 'message' in result:
                         st.info(result['message'])
                 else:
@@ -336,11 +288,7 @@ class TrackCard:
         return {}
     
     def _get_feature_color(self, feature: str, value: float) -> str:
-        """Get color for audio feature based on value"""
-        
-        # Color gradients for different features
         if feature in ['energy', 'danceability']:
-            # Red to green gradient for energy-related features
             if value > 0.7:
                 return "linear-gradient(90deg, #ff6b6b, #ff8e53)"
             elif value > 0.4:
@@ -349,17 +297,14 @@ class TrackCard:
                 return "linear-gradient(90deg, #54a0ff, #5f27cd)"
         
         elif feature == 'valence':
-            # Blue to yellow gradient for positivity
             if value > 0.6:
                 return "linear-gradient(90deg, #feca57, #ff9ff3)"
             else:
                 return "linear-gradient(90deg, #54a0ff, #5f27cd)"
         
         elif feature in ['acousticness', 'instrumentalness']:
-            # Green gradient for acoustic features
             return "linear-gradient(90deg, #26de81, #20bf6b)"
         
         else:
-            # Default gradient
             return "linear-gradient(90deg, #667eea, #764ba2)"
 

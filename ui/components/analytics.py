@@ -8,27 +8,18 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 class AnalyticsPage:
-    """Comprehensive analytics and reporting page"""
-    
     def __init__(self, db_manager):
         self.db_manager = db_manager
     
     def show_analytics_page(self, user: Dict, db_manager):
-        """Main analytics page"""
-        
         st.markdown("### 📊 Your Music Analytics Dashboard")
-        
-        # Get user analytics data
         analytics_data = self._get_comprehensive_analytics(user['id'])
         
         if analytics_data['total_interactions'] == 0:
             self._show_empty_state()
             return
         
-        # Overview metrics
         self._show_overview_metrics(analytics_data)
-        
-        # Main analytics tabs
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📈 Activity Trends",
             "🎭 Music Preferences", 
@@ -57,9 +48,6 @@ class AnalyticsPage:
             self._show_export_reports(user, analytics_data)
     
     def _get_comprehensive_analytics(self, user_id: int) -> Dict:
-        """Get all analytics data for user"""
-        
-        # Basic stats
         interactions_df = pd.read_sql_query(
             'SELECT * FROM interactions WHERE user_id = ? ORDER BY timestamp',
             'sqlite:///'+self.db_manager.db_path, params=(user_id,)
@@ -75,12 +63,11 @@ class AnalyticsPage:
             'sqlite:///'+self.db_manager.db_path, params=(user_id,)
         )
         
-        # Calculate derived metrics
+
         total_interactions = len(interactions_df)
         total_feedback = len(feedback_df)
         avg_rating = feedback_df['rating'].mean() if len(feedback_df) > 0 else 0
-        
-        # Recent activity (last 30 days)
+
         recent_date = datetime.now() - timedelta(days=30)
         recent_interactions = len(interactions_df[
             pd.to_datetime(interactions_df['timestamp']) >= recent_date
@@ -102,7 +89,6 @@ class AnalyticsPage:
         }
     
     def _show_empty_state(self):
-        """Show message when no data available"""
         st.info("""
         🎵 **Start Your Music Journey!**
         
@@ -115,8 +101,6 @@ class AnalyticsPage:
         """)
     
     def _show_overview_metrics(self, data: Dict):
-        """Show overview metrics cards"""
-        
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -149,7 +133,6 @@ class AnalyticsPage:
                 st.metric("Average Rating", "No ratings yet")
         
         with col4:
-            # AI learning progress
             if data['total_feedback'] >= 5:
                 progress = min(100, (data['total_feedback'] / 50) * 100)
                 st.metric(
@@ -166,24 +149,18 @@ class AnalyticsPage:
                 )
     
     def _show_activity_trends(self, data: Dict):
-        """Show activity trends and patterns"""
-        
         interactions_df = data['interactions_df']
         feedback_df = data['feedback_df']
         
         if len(interactions_df) == 0:
             st.info("No activity data available yet.")
             return
-        
-        # Prepare time series data
+
         interactions_df['timestamp'] = pd.to_datetime(interactions_df['timestamp'])
         interactions_df['date'] = interactions_df['timestamp'].dt.date
         interactions_df['hour'] = interactions_df['timestamp'].dt.hour
         interactions_df['day_name'] = interactions_df['timestamp'].dt.day_name()
-        
-        # Daily activity trend
         daily_activity = interactions_df.groupby('date').size().reset_index(name='queries')
-        
         fig1 = px.line(
             daily_activity, 
             x='date', 
@@ -193,12 +170,9 @@ class AnalyticsPage:
         )
         fig1.update_layout(showlegend=False)
         st.plotly_chart(fig1, use_container_width=True)
-        
-        # Hourly and daily patterns
         col1, col2 = st.columns(2)
         
         with col1:
-            # Hourly activity
             hourly_activity = interactions_df.groupby('hour').size().reset_index(name='queries')
             
             fig2 = px.bar(
@@ -211,7 +185,6 @@ class AnalyticsPage:
             st.plotly_chart(fig2, use_container_width=True)
         
         with col2:
-            # Day of week activity
             day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
             daily_pattern = interactions_df.groupby('day_name').size().reset_index(name='queries')
             daily_pattern['day_name'] = pd.Categorical(
@@ -220,7 +193,6 @@ class AnalyticsPage:
                 ordered=True
             )
             daily_pattern = daily_pattern.sort_values('day_name')
-            
             fig3 = px.bar(
                 daily_pattern,
                 x='day_name',
@@ -230,11 +202,9 @@ class AnalyticsPage:
             )
             st.plotly_chart(fig3, use_container_width=True)
         
-        # Activity insights
         if len(interactions_df) > 5:
             peak_hour = interactions_df['hour'].mode()[0]
             peak_day = interactions_df['day_name'].mode()[0]
-            
             st.info(f"""
             📊 **Activity Insights:**
             - Most active hour: {peak_hour}:00
@@ -243,17 +213,12 @@ class AnalyticsPage:
             """)
     
     def _show_music_preferences(self, data: Dict):
-        """Show music preferences analysis"""
-        
         feedback_df = data['feedback_df']
-        
         if len(feedback_df) == 0:
             st.info("Rate some tracks to see your music preferences!")
             return
-        
-        # Genre analysis from track tags
+
         genre_data = self._extract_genre_data(feedback_df)
-        
         if genre_data:
             col1, col2 = st.columns(2)
             
@@ -271,7 +236,6 @@ class AnalyticsPage:
                 st.plotly_chart(fig1, use_container_width=True)
             
             with col2:
-                # Genre ratings
                 genre_ratings = self._get_genre_ratings(feedback_df)
                 if genre_ratings:
                     genre_rating_df = pd.DataFrame(
@@ -288,8 +252,7 @@ class AnalyticsPage:
                         labels={'Average Rating': 'Average Rating (1-5)'}
                     )
                     st.plotly_chart(fig2, use_container_width=True)
-        
-        # Artist preferences
+
         artist_data = feedback_df.groupby('artist').agg({
             'rating': ['count', 'mean']
         }).round(2)
@@ -314,8 +277,6 @@ class AnalyticsPage:
                 }
             )
             st.plotly_chart(fig3, use_container_width=True)
-            
-            # Top artists table
             st.dataframe(
                 artist_data,
                 use_container_width=True,
@@ -326,15 +287,12 @@ class AnalyticsPage:
             )
     
     def _show_rating_analysis(self, data: Dict):
-        """Show detailed rating analysis"""
-        
         feedback_df = data['feedback_df']
         
         if len(feedback_df) == 0:
             st.info("No ratings available yet.")
             return
         
-        # Rating distribution
         rating_counts = feedback_df['rating'].value_counts().sort_index()
         
         col1, col2 = st.columns(2)
@@ -350,7 +308,6 @@ class AnalyticsPage:
             st.plotly_chart(fig1, use_container_width=True)
         
         with col2:
-            # Rating over time
             feedback_df['timestamp'] = pd.to_datetime(feedback_df['timestamp'])
             feedback_df['date'] = feedback_df['timestamp'].dt.date
             
@@ -365,7 +322,6 @@ class AnalyticsPage:
             )
             st.plotly_chart(fig2, use_container_width=True)
         
-        # Rating insights
         st.markdown("#### 📊 Rating Insights")
         
         insights_col1, insights_col2, insights_col3 = st.columns(3)
@@ -395,19 +351,13 @@ class AnalyticsPage:
                          help="How your recent ratings compare to overall average")
     
     def _show_ai_performance(self, data: Dict):
-        """Show AI model performance metrics"""
-        
         model_performance_df = data['model_performance_df']
         feedback_df = data['feedback_df']
         
         if len(model_performance_df) == 0:
             st.info("AI model not trained yet. Rate more tracks to enable AI performance tracking.")
             return
-        
-        # Latest model performance
         latest_performance = model_performance_df.iloc[-1]
-        
-        # Performance metrics
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -426,7 +376,6 @@ class AnalyticsPage:
             cv_score = latest_performance.get('cv_score', 0) * 100
             st.metric("Cross-Validation Score", f"{cv_score:.1f}%")
         
-        # Performance over time
         if len(model_performance_df) > 1:
             model_performance_df['timestamp'] = pd.to_datetime(model_performance_df['timestamp'])
             
@@ -439,9 +388,7 @@ class AnalyticsPage:
             )
             st.plotly_chart(fig1, use_container_width=True)
         
-        # Prediction vs actual analysis
         feedback_with_predictions = feedback_df[feedback_df['predicted_rating'].notna()]
-        
         if len(feedback_with_predictions) > 5:
             fig2 = px.scatter(
                 feedback_with_predictions,
@@ -451,7 +398,6 @@ class AnalyticsPage:
                 labels={'predicted_rating': 'AI Predicted Rating', 'rating': 'Your Actual Rating'}
             )
             
-            # Add perfect prediction line
             fig2.add_trace(go.Scatter(
                 x=[1, 5], y=[1, 5],
                 mode='lines',
@@ -460,14 +406,10 @@ class AnalyticsPage:
             ))
             
             st.plotly_chart(fig2, use_container_width=True)
-            
-            # Prediction accuracy insights
             mae_actual = abs(feedback_with_predictions['rating'] - feedback_with_predictions['predicted_rating']).mean()
             st.info(f"🤖 **AI Insights:** On average, the AI predictions are within {mae_actual:.2f} stars of your actual ratings.")
     
     def _show_listening_patterns(self, data: Dict):
-        """Show advanced listening pattern analysis"""
-        
         interactions_df = data['interactions_df']
         feedback_df = data['feedback_df']
         
@@ -475,14 +417,12 @@ class AnalyticsPage:
             st.info("No listening pattern data available yet.")
             return
         
-        # Mood analysis over time
         mood_data = self._extract_mood_data(interactions_df)
         
         if mood_data:
             col1, col2 = st.columns(2)
             
             with col1:
-                # Mood distribution
                 mood_counts = pd.Series(mood_data).value_counts()
                 
                 fig1 = px.pie(
@@ -493,7 +433,6 @@ class AnalyticsPage:
                 st.plotly_chart(fig1, use_container_width=True)
             
             with col2:
-                # Mood vs time analysis
                 interactions_df['mood'] = mood_data
                 interactions_df['hour'] = pd.to_datetime(interactions_df['timestamp']).dt.hour
                 
@@ -508,21 +447,15 @@ class AnalyticsPage:
                 )
                 st.plotly_chart(fig2, use_container_width=True)
         
-        # Query analysis
         if len(interactions_df) > 0:
             st.markdown("#### 🔍 Query Analysis")
-            
-            # Query length analysis
             interactions_df['query_length'] = interactions_df['query'].str.len()
-            
             avg_query_length = interactions_df['query_length'].mean()
             
             col1, col2 = st.columns(2)
             
             with col1:
                 st.metric("Average Query Length", f"{avg_query_length:.0f} characters")
-                
-                # Most common words in queries
                 all_queries = ' '.join(interactions_df['query'].str.lower())
                 common_words = self._get_common_words(all_queries)
                 
@@ -532,7 +465,6 @@ class AnalyticsPage:
                         st.write(f"• {word}: {count} times")
             
             with col2:
-                # Query frequency distribution
                 fig3 = px.histogram(
                     interactions_df,
                     x='query_length',
@@ -545,8 +477,6 @@ class AnalyticsPage:
         """Show export and reporting options"""
         
         st.markdown("#### 📄 Export Your Data")
-        
-        # Report type selection
         report_type = st.selectbox(
             "Select Report Type:",
             [
@@ -558,7 +488,6 @@ class AnalyticsPage:
             ]
         )
         
-        # Date range selection for custom reports
         if report_type == "Custom Date Range Report":
             col1, col2 = st.columns(2)
             with col1:
@@ -570,18 +499,13 @@ class AnalyticsPage:
             start_date = None
             end_date = None
         
-        # Export format
         export_format = st.selectbox("Export Format:", ["Excel (.xlsx)", "CSV", "JSON"])
-        
-        # Generate report button
         if st.button("📥 Generate Report", type="primary"):
             with st.spinner("Generating report..."):
-                
                 if export_format == "Excel (.xlsx)":
                     report_data = self._generate_excel_report(
                         user, data, report_type, start_date, end_date
                     )
-                    
                     if report_data:
                         st.download_button(
                             label="📥 Download Excel Report",
@@ -612,21 +536,15 @@ class AnalyticsPage:
                         mime="application/json"
                     )
                     st.success("JSON report generated!")
-        
-        # Report preview
+
         if st.checkbox("Show Report Preview"):
             self._show_report_preview(user, data, report_type)
     
     def _generate_excel_report(self, user: Dict, data: Dict, report_type: str, 
                               start_date=None, end_date=None) -> bytes:
-        """Generate comprehensive Excel report"""
-        
         output = BytesIO()
-        
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
-            
-            # Define formats
             header_format = workbook.add_format({
                 'bold': True,
                 'text_wrap': True,
@@ -642,7 +560,6 @@ class AnalyticsPage:
                 'font_color': 'white'
             })
             
-            # Executive Summary Sheet
             summary_data = {
                 'Metric': [
                     'User', 'Report Generated', 'Report Type', 'Total Queries',
@@ -665,20 +582,16 @@ class AnalyticsPage:
             
             summary_df = pd.DataFrame(summary_data)
             summary_df.to_excel(writer, sheet_name='Executive Summary', index=False)
-            
-            # Format summary sheet
             worksheet = writer.sheets['Executive Summary']
             worksheet.write('A1', 'Music Analytics Report', title_format)
             worksheet.set_column('A:A', 25)
             worksheet.set_column('B:B', 30)
-            
-            # Activity Data Sheet
+
             if len(data['interactions_df']) > 0:
                 activity_df = data['interactions_df'][['timestamp', 'query', 'rl_enhanced']].copy()
                 activity_df['timestamp'] = pd.to_datetime(activity_df['timestamp'])
                 activity_df.to_excel(writer, sheet_name='Activity Timeline', index=False)
             
-            # Ratings Sheet
             if len(data['feedback_df']) > 0:
                 ratings_df = data['feedback_df'][[
                     'timestamp', 'track_name', 'artist', 'rating', 
@@ -687,9 +600,7 @@ class AnalyticsPage:
                 ratings_df['timestamp'] = pd.to_datetime(ratings_df['timestamp'])
                 ratings_df.to_excel(writer, sheet_name='Ratings History', index=False)
             
-            # Music Preferences Sheet
             if len(data['feedback_df']) > 0:
-                # Artist preferences
                 artist_stats = data['feedback_df'].groupby('artist').agg({
                     'rating': ['count', 'mean']
                 }).round(2)
@@ -697,7 +608,6 @@ class AnalyticsPage:
                 artist_stats = artist_stats.sort_values('Average Rating', ascending=False)
                 artist_stats.to_excel(writer, sheet_name='Artist Preferences')
                 
-                # Genre analysis
                 genre_data = self._extract_genre_data(data['feedback_df'])
                 if genre_data:
                     genre_df = pd.DataFrame(
@@ -706,8 +616,7 @@ class AnalyticsPage:
                     ).sort_values('Count', ascending=False)
                     
                     genre_df.to_excel(writer, sheet_name='Genre Preferences', index=False)
-            
-            # AI Performance Sheet
+  
             if len(data['model_performance_df']) > 0:
                 ai_performance = data['model_performance_df'][[
                     'timestamp', 'model_accuracy', 'mae', 'training_samples'
@@ -718,21 +627,16 @@ class AnalyticsPage:
         return output.getvalue()
     
     def _generate_csv_report(self, user: Dict, data: Dict, report_type: str) -> str:
-        """Generate CSV report"""
-        
         if report_type == "Activity Timeline":
             df = data['interactions_df'][['timestamp', 'query', 'rl_enhanced']].copy()
         elif report_type == "Music Preferences Summary":
             df = data['feedback_df'][['timestamp', 'track_name', 'artist', 'rating']].copy()
         else:
-            # Combined report
             df = data['feedback_df'][['timestamp', 'track_name', 'artist', 'rating', 'feedback_text']].copy()
         
         return df.to_csv(index=False)
     
     def _generate_json_report(self, user: Dict, data: Dict, report_type: str) -> str:
-        """Generate JSON report"""
-        
         report_data = {
             'user': user['username'],
             'generated_at': datetime.now().isoformat(),
@@ -752,10 +656,7 @@ class AnalyticsPage:
         return json.dumps(report_data, indent=2, default=str)
     
     def _show_report_preview(self, user: Dict, data: Dict, report_type: str):
-        """Show preview of report content"""
-        
         st.markdown("#### 📋 Report Preview")
-        
         if report_type == "Complete Analytics Report":
             st.write("**This report will include:**")
             st.write("• Executive summary with key metrics")
@@ -770,15 +671,12 @@ class AnalyticsPage:
             st.write("• Rating patterns")
             st.write("• Preference insights")
             
-        # Show sample data
         if len(data['feedback_df']) > 0:
             st.markdown("**Sample Data:**")
             sample_df = data['feedback_df'][['track_name', 'artist', 'rating']].head(5)
             st.dataframe(sample_df, use_container_width=True)
     
-    # Helper methods
     def _extract_genre_data(self, feedback_df: pd.DataFrame) -> Dict:
-        """Extract genre data from feedback"""
         genre_counts = {}
         
         for _, row in feedback_df.iterrows():
@@ -792,7 +690,6 @@ class AnalyticsPage:
         return genre_counts
     
     def _get_genre_ratings(self, feedback_df: pd.DataFrame) -> Dict:
-        """Get average ratings by genre"""
         genre_ratings = {}
         
         for _, row in feedback_df.iterrows():
@@ -800,22 +697,20 @@ class AnalyticsPage:
                 tags = json.loads(row.get('track_tags', '[]'))
                 rating = row['rating']
                 
-                for tag in tags[:2]:  # Top 2 tags per track
+                for tag in tags[:2]:  
                     if tag not in genre_ratings:
                         genre_ratings[tag] = []
                     genre_ratings[tag].append(rating)
             except:
                 continue
         
-        # Calculate averages
         return {
             genre: sum(ratings) / len(ratings)
             for genre, ratings in genre_ratings.items()
-            if len(ratings) >= 2  # Only genres with 2+ ratings
+            if len(ratings) >= 2  
         }
     
     def _extract_mood_data(self, interactions_df: pd.DataFrame) -> List:
-        """Extract mood data from interactions"""
         moods = []
         
         for _, row in interactions_df.iterrows():
@@ -829,20 +724,15 @@ class AnalyticsPage:
         return moods
     
     def _get_common_words(self, text: str) -> List[Tuple[str, int]]:
-        """Get most common words from text"""
         import re
         from collections import Counter
-        
-        # Remove common stop words
         stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'i', 'me', 'my', 'you', 'your', 'it', 'its', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'that', 'this', 'these', 'those'}
-        
         words = re.findall(r'\b\w+\b', text.lower())
         words = [word for word in words if word not in stop_words and len(word) > 2]
         
         return Counter(words).most_common(15)
     
     def _calculate_satisfaction_rate(self, feedback_df: pd.DataFrame) -> float:
-        """Calculate satisfaction rate (4+ star ratings)"""
         if len(feedback_df) == 0:
             return 0.0
         
@@ -850,7 +740,6 @@ class AnalyticsPage:
         return (high_rated / len(feedback_df)) * 100
     
     def _get_most_active_day(self, interactions_df: pd.DataFrame) -> str:
-        """Get most active day of week"""
         if len(interactions_df) == 0:
             return "No data"
         
@@ -861,7 +750,6 @@ class AnalyticsPage:
         return interactions_df['day_name'].mode()[0] if len(interactions_df) > 0 else "No data"
     
     def _get_top_genre(self, feedback_df: pd.DataFrame) -> str:
-        """Get user's top genre"""
         genre_data = self._extract_genre_data(feedback_df)
         
         if not genre_data:
@@ -869,8 +757,6 @@ class AnalyticsPage:
         
         return max(genre_data, key=genre_data.get)
 
-# Usage in main app
 def show_analytics_page(user: Dict, db_manager):
-    """Show analytics page - called from main app"""
     analytics_page = AnalyticsPage(db_manager)
     analytics_page.show_analytics_page(user, db_manager)

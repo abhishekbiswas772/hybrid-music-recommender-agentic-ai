@@ -1,10 +1,9 @@
-# database/manager.py - Fixed Database Manager
 import sqlite3
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from typing import Dict, List
+from datetime import datetime
 import numpy as np
 import pandas as pd
 
@@ -13,35 +12,24 @@ class DatabaseManager:
     
     def __init__(self, db_path: str):
         self.db_path = db_path
-        
-        # Ensure the directory exists
         db_dir = os.path.dirname(self.db_path)
         if db_dir and not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
             print(f"Created directory: {db_dir}")
-        
-        # Ensure the file can be created
         try:
-            # Test if we can create/access the database file
             Path(self.db_path).touch(exist_ok=True)
         except Exception as e:
             print(f"Error creating database file: {e}")
-            # Fallback to current directory
             self.db_path = "music_app.db"
             print(f"Using fallback database path: {self.db_path}")
         
         self.init_database()
     
     def init_database(self):
-        """Initialize database with all required tables"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Enable foreign keys
                 cursor.execute("PRAGMA foreign_keys = ON")
-                
-                # Users table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,8 +43,6 @@ class DatabaseManager:
                         settings TEXT DEFAULT '{}'
                     )
                 ''')
-                
-                # Interactions table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS interactions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,8 +59,6 @@ class DatabaseManager:
                         FOREIGN KEY (user_id) REFERENCES users (id)
                     )
                 ''')
-                
-                # Enhanced feedback table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS feedback (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,8 +83,6 @@ class DatabaseManager:
                         FOREIGN KEY (interaction_id) REFERENCES interactions (id)
                     )
                 ''')
-                
-                # User model performance tracking
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS user_model_performance (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,7 +99,6 @@ class DatabaseManager:
                     )
                 ''')
                 
-                # Create indexes
                 indexes = [
                     "CREATE INDEX IF NOT EXISTS idx_interactions_user_timestamp ON interactions(user_id, timestamp)",
                     "CREATE INDEX IF NOT EXISTS idx_feedback_user_rating ON feedback(user_id, rating)",
@@ -136,7 +117,6 @@ class DatabaseManager:
             raise
     
     def get_user_feedback_with_context(self, user_id: int) -> List[Dict]:
-        """Get user feedback with full context for RL training"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -159,7 +139,6 @@ class DatabaseManager:
             return []
     
     def get_user_feedback_count(self, user_id: int) -> int:
-        """Get count of feedback entries for user"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -191,11 +170,8 @@ class DatabaseManager:
             print(f"Error updating model stats: {e}")
     
     def get_user_preference_patterns(self, user_id: int) -> Dict:
-        """Get user preference patterns from feedback data"""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                
-                # Get high-rated tracks
                 high_rated_df = pd.read_sql_query('''
                     SELECT artist, track_tags, rating, track_features
                     FROM feedback 
@@ -205,14 +181,11 @@ class DatabaseManager:
                 patterns = {}
                 
                 if len(high_rated_df) > 0:
-                    # Top artists
                     patterns['preferred_artists'] = high_rated_df['artist'].value_counts().head(5).index.tolist()
-                    
-                    # Extract genres from tags
                     all_tags = []
                     for tags_json in high_rated_df['track_tags'].dropna():
                         try:
-                            if tags_json:  # Check if not empty
+                            if tags_json: 
                                 tags = json.loads(tags_json)
                                 all_tags.extend(tags)
                         except (json.JSONDecodeError, TypeError):
@@ -222,11 +195,10 @@ class DatabaseManager:
                         tag_counts = pd.Series(all_tags).value_counts()
                         patterns['preferred_genres'] = tag_counts.head(5).index.tolist()
                     
-                    # Average energy preference
                     energy_values = []
                     for features_json in high_rated_df['track_features'].dropna():
                         try:
-                            if features_json:  # Check if not empty
+                            if features_json:  
                                 features = json.loads(features_json)
                                 energy_values.append(features.get('energy', 0.5))
                         except (json.JSONDecodeError, TypeError):
@@ -242,7 +214,6 @@ class DatabaseManager:
             return {}
     
     def get_user_feedback_analysis(self, user_id: int) -> Dict:
-        """Get comprehensive feedback analysis"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 feedback_df = pd.read_sql_query('''
@@ -253,24 +224,18 @@ class DatabaseManager:
                     return {}
                 
                 analysis = {}
-                
-                # Rating distribution
                 analysis['rating_distribution'] = feedback_df['rating'].value_counts().to_dict()
                 analysis['average_rating'] = feedback_df['rating'].mean()
-                
-                # Top artists and genres from high ratings
                 high_rated = feedback_df[feedback_df['rating'] >= 4]
                 
                 if len(high_rated) > 0:
                     analysis['top_artists'] = high_rated['artist'].value_counts().head(5).to_dict()
-                    
-                    # Extract genres
                     all_genres = []
                     for tags_json in high_rated['track_tags'].dropna():
                         try:
-                            if tags_json:  # Check if not empty
+                            if tags_json:  
                                 tags = json.loads(tags_json)
-                                all_genres.extend(tags[:3])  # Top 3 tags per track
+                                all_genres.extend(tags[:3]) 
                         except (json.JSONDecodeError, TypeError):
                             continue
                     
@@ -278,7 +243,6 @@ class DatabaseManager:
                         genre_counts = pd.Series(all_genres).value_counts()
                         analysis['top_genres'] = genre_counts.head(5).to_dict()
                 
-                # Recommendation stats
                 analysis['recommendation_stats'] = {
                     'total_ratings': len(feedback_df),
                     'positive_ratings': len(feedback_df[feedback_df['rating'] >= 4]),
@@ -293,7 +257,6 @@ class DatabaseManager:
             return {}
     
     def get_user_temporal_patterns(self, user_id: int) -> Dict:
-        """Get user's temporal listening patterns"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 interactions_df = pd.read_sql_query('''
@@ -344,7 +307,6 @@ class DatabaseManager:
             return []
     
     def log_interaction(self, interaction_data: Dict):
-        """Log user interaction"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -373,7 +335,6 @@ class DatabaseManager:
             return None
     
     def log_feedback(self, feedback_data: Dict):
-        """Log user feedback"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -407,7 +368,6 @@ class DatabaseManager:
             print(f"Error logging feedback: {e}")
     
     def get_user_data(self, user_id: int) -> Dict:
-        """Get basic user data"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -423,7 +383,6 @@ class DatabaseManager:
             return {}
     
     def get_recent_interactions(self, user_id: int, limit: int = 10) -> List[Dict]:
-        """Get recent user interactions"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -444,23 +403,16 @@ class DatabaseManager:
             return []
     
     def get_user_stats(self, user_id: int) -> Dict:
-        """Get user statistics"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Basic stats
                 cursor.execute('SELECT COUNT(*) FROM interactions WHERE user_id = ?', (user_id,))
                 total_interactions = cursor.fetchone()[0]
-                
                 cursor.execute('SELECT COUNT(*) FROM feedback WHERE user_id = ?', (user_id,))
                 total_feedback = cursor.fetchone()[0]
-                
                 cursor.execute('SELECT AVG(rating) FROM feedback WHERE user_id = ?', (user_id,))
                 avg_rating_result = cursor.fetchone()
                 average_rating = avg_rating_result[0] if avg_rating_result[0] else 0
-                
-                # Recent high-rated tracks
                 cursor.execute('''
                     SELECT track_name, artist, rating, timestamp
                     FROM feedback 
@@ -478,14 +430,12 @@ class DatabaseManager:
                     }
                     for row in cursor.fetchall()
                 ]
-                
                 return {
                     'total_interactions': total_interactions,
                     'total_feedback': total_feedback,
                     'average_rating': average_rating,
                     'recent_high_rated': recent_high_rated
                 }
-                
         except Exception as e:
             print(f"Error getting user stats: {e}")
             return {
@@ -496,7 +446,6 @@ class DatabaseManager:
             }
         
     def get_feedback_patterns(self, user_id: int) -> Dict:
-        """Get user feedback patterns"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 feedback_df = pd.read_sql_query('''
@@ -514,8 +463,6 @@ class DatabaseManager:
                     'avg_rating': feedback_df['rating'].mean(),
                     'total_ratings': len(feedback_df)
                 }
-                
-                # Extract mood patterns from high-rated tracks
                 high_rated = feedback_df[feedback_df['rating'] >= 4]
                 if len(high_rated) > 0:
                     all_tags = []
